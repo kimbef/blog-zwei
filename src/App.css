@@ -1,0 +1,75 @@
+/* Root Container */
+#root {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: top;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Logo Styling */
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  transition: transform 0.3s ease-in-out, filter 0.3s ease-in-out;
+}
+
+.logo:hover {
+  filter: drop-shadow(0 0 2em #d21919aa); /* MUI Primary Blue Glow */
+  transform: scale(1.1);
+}
+
+/* React-Specific Logo Hover Effect */
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #fb6161aa);
+}
+
+/* Animated Logo */
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Ensure Animation Runs if Motion is Allowed */
+@media (prefers-reduced-motion: no-preference) {
+  .logo.spin {
+    animation: logo-spin infinite 15s linear;
+  }
+}
+
+/* Card Style */
+.card {
+  padding: 2em;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease-in-out;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+}
+
+/* Docs Section */
+.read-the-docs {
+  color: #aaaaaa;
+  font-size: 0.9rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+
+  .logo {
+    height: 5em;
+  }
+}
