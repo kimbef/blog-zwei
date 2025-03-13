@@ -451,7 +451,7 @@ const Home: React.FC = () => {
             </Grid>
             <Grid item xs={12} md={6}>
               <Typography variant="body2" color="text.secondary" textAlign={{ xs: 'left', md: 'right' }}>
-                © {new Date().getFullYear()} Your Blog Name. All rights reserved.
+                © {new Date().getFullYear()} Kimbeff's Blog. All rights reserved.
               </Typography>
             </Grid>
           </Grid>
