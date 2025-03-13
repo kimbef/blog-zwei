@@ -3,6 +3,7 @@ import { Paper, Typography, TextField, Button } from "@mui/material";
 import { db } from "../firebase";
 import { ref, push } from "firebase/database";
 import { AuthContext } from "../context/AuthContext";
+import { toast } from 'react-toastify';
 
 const CreatePost: React.FC = () => {
   const auth = useContext(AuthContext);
@@ -10,19 +11,30 @@ const CreatePost: React.FC = () => {
   const [content, setContent] = useState("");
 
   const handleSubmit = async () => {
-    if (!auth?.user) return alert("You must be logged in to create a post.");
+    if (!auth?.user) {
+      toast.error("You must be logged in to create a post.");
+      return;
+    }
 
-    const postRef = ref(db, "posts");
-    await push(postRef, {
-      title,
-      content,
-      authorId: auth.user.uid, // ✅ Store the logged-in user's ID
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      const postRef = ref(db, "posts");
+      await push(postRef, {
+        title,
+        content,
+        authorId: auth.user.uid,
+        createdAt: new Date().toISOString(),
+        likes: 0,
+        ratings: [],
+        comments: []
+      });
 
-    setTitle("");
-    setContent("");
-    alert("Post created successfully!");
+      setTitle("");
+      setContent("");
+      toast.success("Post created successfully!");
+    } catch (error) {
+      console.error("Error creating post:", error);
+      toast.error("Failed to create post. Please try again.");
+    }
   };
 
   return (

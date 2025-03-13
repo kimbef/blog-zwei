@@ -1,135 +1,204 @@
 import React, { useEffect, useState, useContext } from "react";
-import { Paper, Typography, Button, Box, IconButton, TextField } from "@mui/material";
-import { Delete, Edit, Save, Cancel } from "@mui/icons-material";
+import { Typography, Box, Grid, Card, CardContent, CardActions, IconButton, useTheme, Skeleton } from "@mui/material";
+import { Visibility, Delete, Edit } from "@mui/icons-material";
+import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
 import { db } from "../firebase";
-import { ref, onValue, remove, update } from "firebase/database";
+import { ref, get, query, orderByChild, equalTo, remove } from "firebase/database";
+import { toast } from 'react-toastify';
 
 interface Post {
-  id: string;
+  id?: string;
   title: string;
   content: string;
   authorId: string;
+  createdAt?: string;
 }
 
 const MyPosts: React.FC = () => {
+  const theme = useTheme();
+  const navigate = useNavigate();
   const auth = useContext(AuthContext);
-  const [myPosts, setMyPosts] = useState<Post[]>([]);
-  const [editingPost, setEditingPost] = useState<string | null>(null);
-  const [editedTitle, setEditedTitle] = useState<string>("");
-  const [editedContent, setEditedContent] = useState<string>("");
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth?.user) return;
-
-    const postsRef = ref(db, "posts");
-    
-    onValue(postsRef, (snapshot) => {
-      if (snapshot.exists()) {
-        const allPosts = snapshot.val();
-        const userPosts = Object.keys(allPosts)
-          .map((key) => ({
-            id: key,
-            ...allPosts[key],
-          }))
-          .filter((post) => post.authorId === auth.user?.uid); // ✅ Filter only the logged-in user's posts
-
-        setMyPosts(userPosts);
-      } else {
-        setMyPosts([]);
+    const fetchMyPosts = async () => {
+      if (!auth?.user) {
+        navigate('/login');
+        return;
       }
-    });
-  }, [auth?.user]);
+
+      try {
+        setLoading(true);
+        const postsRef = ref(db, 'posts');
+        const userPostsQuery = query(
+          postsRef,
+          orderByChild('authorId'),
+          equalTo(auth.user.uid)
+        );
+
+        const snapshot = await get(userPostsQuery);
+        if (snapshot.exists()) {
+          const postsData = snapshot.val();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const postsArray = Object.entries(postsData).map(([id, post]: [string, any]) => ({
+            id,
+            ...post,
+          }));
+          setPosts(postsArray);
+        } else {
+          setPosts([]);
+        }
+      } catch (error) {
+        console.error("Error fetching posts:", error);
+        toast.error("Failed to load your posts. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchMyPosts();
+  }, [auth?.user, navigate]);
 
   const handleDelete = async (postId: string) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) return;
-    await remove(ref(db, `posts/${postId}`));
-    setMyPosts((prev) => prev.filter((post) => post.id !== postId));
+    if (!postId) return;
+    
+    try {
+      await remove(ref(db, `posts/${postId}`));
+      setPosts(posts.filter(post => post.id !== postId));
+      toast.success("Post deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      toast.error("Failed to delete post. Please try again.");
+    }
   };
 
-  const handleEdit = (post: Post) => {
-    setEditingPost(post.id);
-    setEditedTitle(post.title);
-    setEditedContent(post.content);
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
-  const handleCancelEdit = () => {
-    setEditingPost(null);
-    setEditedTitle("");
-    setEditedContent("");
-  };
-
-  const handleSaveEdit = async (postId: string) => {
-    const postRef = ref(db, `posts/${postId}`);
-    await update(postRef, { title: editedTitle, content: editedContent });
-
-    setMyPosts((prev) =>
-      prev.map((post) =>
-        post.id === postId ? { ...post, title: editedTitle, content: editedContent } : post
-      )
+  if (loading) {
+    return (
+      <Box sx={{ maxWidth: "1200px", margin: "auto", padding: { xs: "10px", sm: "20px" } }}>
+        <Grid container spacing={3}>
+          {[...Array(3)].map((_, index) => (
+            <Grid item xs={12} sm={6} md={4} key={index}>
+              <Card sx={{ height: "100%" }}>
+                <Skeleton variant="rectangular" height={140} />
+                <CardContent>
+                  <Skeleton variant="text" width="60%" height={32} />
+                  <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
+                  <Skeleton variant="text" width="80%" height={24} />
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      </Box>
     );
-
-    setEditingPost(null);
-  };
+  }
 
   return (
-    <Box sx={{ maxWidth: "600px", margin: "auto", padding: "20px" }}>
-      <Typography variant="h4" textAlign="center" sx={{ marginBottom: "15px" }}>
+    <Box sx={{ maxWidth: "1200px", margin: "auto", padding: { xs: "10px", sm: "20px" } }}>
+      <Typography 
+        variant="h4" 
+        textAlign="center" 
+        sx={{ 
+          marginBottom: "30px",
+          fontWeight: "bold",
+          background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+          backgroundClip: "text",
+          textFillColor: "transparent",
+          WebkitBackgroundClip: "text",
+        }}
+      >
         My Posts
       </Typography>
 
-      {myPosts.length === 0 ? (
-        <Typography textAlign="center">No posts found.</Typography>
+      {posts.length === 0 ? (
+        <Typography textAlign="center" variant="h6" color="text.secondary">
+          You haven't created any posts yet.
+        </Typography>
       ) : (
-        myPosts.map((post) => (
-          <Paper key={post.id} sx={{ padding: "15px", marginBottom: "10px" }}>
-            {editingPost === post.id ? (
-              <>
-                {/* Edit Mode */}
-                <TextField
-                  fullWidth
-                  label="Edit Title"
-                  value={editedTitle}
-                  onChange={(e) => setEditedTitle(e.target.value)}
-                  sx={{ marginBottom: "10px" }}
-                />
-                <TextField
-                  fullWidth
-                  label="Edit Content"
-                  multiline
-                  rows={4}
-                  value={editedContent}
-                  onChange={(e) => setEditedContent(e.target.value)}
-                  sx={{ marginBottom: "10px" }}
-                />
-
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Button variant="contained" color="primary" startIcon={<Save />} onClick={() => handleSaveEdit(post.id)}>
-                    Save
-                  </Button>
-                  <Button variant="outlined" color="secondary" startIcon={<Cancel />} onClick={handleCancelEdit}>
-                    Cancel
-                  </Button>
-                </Box>
-              </>
-            ) : (
-              <>
-                {/* View Mode */}
-                <Typography variant="h6">{post.title}</Typography>
-                <Typography>{post.content.slice(0, 100)}...</Typography>
-
-                <Box sx={{ display: "flex", justifyContent: "space-between", marginTop: "10px" }}>
-                  <IconButton color="error" onClick={() => handleDelete(post.id)}>
+        <Grid container spacing={3}>
+          {posts.map((post) => (
+            <Grid item xs={12} sm={6} md={4} key={post.id}>
+              <Card 
+                sx={{ 
+                  height: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  transition: "transform 0.2s, box-shadow 0.2s",
+                  "&:hover": {
+                    transform: "translateY(-5px)",
+                    boxShadow: theme.shadows[8]
+                  }
+                }}
+              >
+                <CardContent sx={{ flexGrow: 1 }}>
+                  <Typography 
+                    variant="h6" 
+                    gutterBottom
+                    sx={{ 
+                      fontWeight: "bold",
+                      color: theme.palette.primary.main
+                    }}
+                  >
+                    {post.title}
+                  </Typography>
+                  <Typography 
+                    variant="body2" 
+                    color="text.secondary"
+                    sx={{ 
+                      mb: 2,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden"
+                    }}
+                  >
+                    {post.content}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    Created: {formatDate(post.createdAt)}
+                  </Typography>
+                </CardContent>
+                <CardActions sx={{ p: 2, pt: 0, justifyContent: "space-between" }}>
+                  <Box sx={{ display: "flex", gap: 1 }}>
+                    <IconButton 
+                      onClick={() => navigate(`/details/${post.id}`)}
+                      color="primary"
+                      size="small"
+                    >
+                      <Visibility />
+                    </IconButton>
+                    <IconButton 
+                      onClick={() => navigate(`/edit/${post.id}`)}
+                      color="primary"
+                      size="small"
+                    >
+                      <Edit />
+                    </IconButton>
+                  </Box>
+                  <IconButton 
+                    onClick={() => handleDelete(post.id!)}
+                    color="error"
+                    size="small"
+                  >
                     <Delete />
                   </IconButton>
-                  <IconButton color="primary" onClick={() => handleEdit(post)}>
-                    <Edit />
-                  </IconButton>
-                </Box>
-              </>
-            )}
-          </Paper>
-        ))
+                </CardActions>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
       )}
     </Box>
   );
