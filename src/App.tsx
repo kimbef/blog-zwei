@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import MyPosts from './pages/MyPosts';
 import theme from './theme';
 import Layout from './components/Layout';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
           />
         </Router>
       </AuthProvider>
+      <SpeedInsights />
     </ThemeProvider>
   );
 };
