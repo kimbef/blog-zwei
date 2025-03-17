@@ -28,7 +28,6 @@ const EditPost: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const auth = useContext(AuthContext);
-  const [post, setPost] = useState<Post | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
@@ -53,7 +52,6 @@ const EditPost: React.FC = () => {
             navigate('/my-posts');
             return;
           }
-          setPost({ id, ...postData });
           setTitle(postData.title);
           setContent(postData.content);
         } else {

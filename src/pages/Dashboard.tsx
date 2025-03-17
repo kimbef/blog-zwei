@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
-import { Typography, Button, Box, IconButton, Pagination, Skeleton, useTheme, Grid, Card, CardContent, CardActions, Chip } from "@mui/material";
+import { Typography, Box, Grid, IconButton, useTheme, CircularProgress, Paper, Divider, Fade, Chip, Pagination } from "@mui/material";
 import { Visibility, AccessTime, Favorite } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { fetchPosts, likePost } from "../realtimeDB"; // ✅ Import database functions
+import { fetchPosts, likePost } from "../realtimeDB";
 import { toast } from 'react-toastify';
 
 interface Post {
   id?: string;
   title: string;
   content: string;
-  likes: number;
+  authorId: string;
   createdAt?: string;
+  likes: number;
 }
 
 const POSTS_PER_PAGE = 9;
@@ -51,7 +52,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+  const handlePageChange = (_event: React.ChangeEvent<unknown>, value: number) => {
     setPage(value);
   };
 
@@ -67,6 +68,19 @@ const Dashboard: React.FC = () => {
       day: 'numeric' 
     });
   };
+
+  if (loading) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '60vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ maxWidth: "1200px", margin: "auto", padding: { xs: "10px", sm: "20px" } }}>
@@ -85,94 +99,115 @@ const Dashboard: React.FC = () => {
         Latest Posts
       </Typography>
 
-      {loading ? (
-        <Grid container spacing={3}>
-          {[...Array(6)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ height: "100%" }}>
-                <Skeleton variant="rectangular" height={140} />
-                <CardContent>
-                  <Skeleton variant="text" width="60%" height={32} />
-                  <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="80%" height={24} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      ) : posts.length === 0 ? (
-        <Typography textAlign="center" variant="h6" color="text.secondary">
-          No posts available.
-        </Typography>
+      {posts.length === 0 ? (
+        <Paper 
+          elevation={0}
+          sx={{ 
+            p: 4, 
+            textAlign: "center",
+            background: theme.palette.background.default,
+            borderRadius: 2
+          }}
+        >
+          <Typography variant="h6" color="text.secondary">
+            No posts available.
+          </Typography>
+        </Paper>
       ) : (
-        <>
+        <Fade in timeout={500}>
           <Grid container spacing={3}>
             {paginatedPosts.map((post) => (
-              <Grid item xs={12} sm={6} md={4} key={post.id}>
-                <Card 
+              <Grid item xs={12} key={post.id}>
+                <Paper 
+                  elevation={0}
                   sx={{ 
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    transition: "transform 0.2s, box-shadow 0.2s",
+                    p: 3,
+                    borderRadius: 2,
+                    background: theme.palette.background.paper,
+                    transition: "all 0.3s ease",
+                    border: `1px solid ${theme.palette.divider}`,
+                    position: "relative",
                     "&:hover": {
-                      transform: "translateY(-5px)",
-                      boxShadow: theme.shadows[8]
+                      transform: "translateY(-4px)",
+                      boxShadow: theme.shadows[4],
+                      borderColor: theme.palette.primary.main
                     }
                   }}
                 >
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography 
-                      variant="h6" 
-                      gutterBottom
+                  <Box sx={{ 
+                    position: "absolute", 
+                    top: 8, 
+                    right: 8, 
+                    display: "flex", 
+                    gap: 0.5,
+                    zIndex: 1
+                  }}>
+                    <IconButton 
+                      onClick={() => navigate(`/details/${post.id}`)}
+                      size="small"
                       sx={{ 
-                        fontWeight: "bold",
-                        color: theme.palette.primary.main
+                        width: 24,
+                        height: 24,
+                        backgroundColor: theme.palette.primary.light,
+                        color: theme.palette.primary.contrastText,
+                        "&:hover": { backgroundColor: theme.palette.primary.main }
                       }}
                     >
-                      {post.title}
-                    </Typography>
-                    <Typography 
-                      variant="body2" 
-                      color="text.secondary"
-                      sx={{ 
-                        mb: 2,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 3,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden"
-                      }}
-                    >
-                      {post.content}
-                    </Typography>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-                      <AccessTime fontSize="small" color="action" />
-                      <Typography variant="caption" color="text.secondary">
+                      <Visibility sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                  
+                  <Typography 
+                    variant="h5" 
+                    sx={{ 
+                      fontWeight: 600,
+                      color: theme.palette.primary.main,
+                      pr: 8
+                    }}
+                  >
+                    {post.title}
+                  </Typography>
+                  
+                  <Typography 
+                    variant="body1" 
+                    color="text.secondary"
+                    sx={{ 
+                      mb: 2,
+                      lineHeight: 1.6
+                    }}
+                  >
+                    {post.content}
+                  </Typography>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Box sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 2,
+                    color: theme.palette.text.secondary
+                  }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <AccessTime fontSize="small" />
+                      <Typography variant="caption">
                         {formatDate(post.createdAt)}
                       </Typography>
                     </Box>
-                  </CardContent>
-                  <CardActions sx={{ p: 2, pt: 0, flexDirection: "column", gap: 1 }}>
-                    <Box sx={{ 
-                      display: "flex", 
-                      alignItems: "center", 
-                      gap: 1,
-                      width: "100%",
-                      justifyContent: "center"
-                    }}>
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
                       <IconButton 
-                        onClick={() => handleLike(post.id!, post.likes)} 
-                        color="error"
+                        onClick={() => handleLike(post.id!, post.likes)}
                         size="small"
                         sx={{ 
-                          transition: "transform 0.2s",
+                          width: 24,
+                          height: 24,
+                          color: theme.palette.error.main,
                           "&:hover": { 
-                            transform: "scale(1.1)",
-                            backgroundColor: theme.palette.error.light
+                            backgroundColor: theme.palette.error.light,
+                            color: theme.palette.error.contrastText
                           }
                         }}
                       >
-                        <Favorite fontSize="small" />
+                        <Favorite sx={{ fontSize: 16 }} />
                       </IconButton>
                       <Chip 
                         label={`${post.likes} Likes`} 
@@ -185,54 +220,37 @@ const Dashboard: React.FC = () => {
                         }}
                       />
                     </Box>
-                    <Button 
-                      onClick={() => navigate(`/details/${post.id!}`)} 
-                      startIcon={<Visibility />} 
-                      variant="contained"
-                      size="small"
-                      fullWidth
-                      sx={{ 
-                        borderRadius: "20px",
-                        textTransform: "none",
-                        backgroundColor: theme.palette.primary.main,
-                        "&:hover": {
-                          backgroundColor: theme.palette.primary.dark
-                        }
-                      }}
-                    >
-                      Read More
-                    </Button>
-                  </CardActions>
-                </Card>
+                  </Box>
+                </Paper>
               </Grid>
             ))}
           </Grid>
+        </Fade>
+      )}
 
-          {totalPages > 1 && (
-            <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-              <Pagination 
-                count={totalPages} 
-                page={page} 
-                onChange={handlePageChange}
-                color="primary"
-                size="large"
-                sx={{
-                  "& .MuiPaginationItem-root": {
-                    borderRadius: "50%",
-                    margin: "0 4px",
-                  },
-                  "& .Mui-selected": {
-                    backgroundColor: theme.palette.primary.main,
-                    color: "white",
-                    "&:hover": {
-                      backgroundColor: theme.palette.primary.dark,
-                    },
-                  },
-                }}
-              />
-            </Box>
-          )}
-        </>
+      {totalPages > 1 && (
+        <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={handlePageChange}
+            color="primary"
+            size="large"
+            sx={{
+              "& .MuiPaginationItem-root": {
+                borderRadius: "50%",
+                margin: "0 4px",
+              },
+              "& .Mui-selected": {
+                backgroundColor: theme.palette.primary.main,
+                color: "white",
+                "&:hover": {
+                  backgroundColor: theme.palette.primary.dark,
+                },
+              },
+            }}
+          />
+        </Box>
       )}
     </Box>
   );
