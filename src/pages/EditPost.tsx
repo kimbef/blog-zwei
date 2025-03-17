@@ -15,14 +15,6 @@ import { db } from "../firebase";
 import { ref, get, update } from "firebase/database";
 import { toast } from 'react-toastify';
 
-interface Post {
-  id: string;
-  title: string;
-  content: string;
-  authorId: string;
-  createdAt?: string;
-}
-
 const EditPost: React.FC = () => {
   const theme = useTheme();
   const { id } = useParams<{ id: string }>();
