@@ -1,14 +1,6 @@
 {
-  "firestore": {
-    "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
-  },
   "database": {
-    
-      "rules": {
-        ".read": "auth != null",
-        ".write": "auth != null"
-      }
-    }
-  
+    "rules": "database.rules.json"
+  }
 }
+

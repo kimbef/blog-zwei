@@ -1,11 +1,12 @@
 import { db } from "./firebase";
-import { ref, get, update, push, remove } from "firebase/database";
+import { ref, get, update, push, remove, query, orderByChild, equalTo } from "firebase/database";
 
 interface Post {
   id?: string;
   title: string;
   content: string;
   authorId: string;
+  createdAt: string;
   likes: number;
   ratings: number[];
   comments: Comment[];
@@ -14,6 +15,8 @@ interface Post {
 interface Comment {
   id: string;
   text: string;
+  authorId: string;
+  createdAt: string;
   likes: number;
   dislikes: number;
   replies: Comment[];
@@ -30,6 +33,45 @@ export const fetchPosts = async (): Promise<Post[]> => {
     })) as Post[];
   }
   return [];
+};
+
+/** 🔹 Fetch user's posts */
+export const fetchUserPosts = async (userId: string): Promise<Post[]> => {
+  try {
+    const postsRef = ref(db, "posts");
+    const userPostsQuery = query(
+      postsRef,
+      orderByChild("authorId"),
+      equalTo(userId)
+    );
+    const snapshot = await get(userPostsQuery);
+    
+    if (!snapshot.exists()) {
+      console.log("No posts found for user:", userId);
+      return [];
+    }
+
+    const posts: Post[] = [];
+    snapshot.forEach((childSnapshot) => {
+      const postData = childSnapshot.val();
+      posts.push({
+        id: childSnapshot.key!,
+        title: postData.title,
+        content: postData.content,
+        authorId: postData.authorId,
+        createdAt: postData.createdAt,
+        likes: postData.likes || 0,
+        ratings: postData.ratings || [],
+        comments: postData.comments || [],
+      });
+    });
+
+    console.log("Fetched posts for user:", userId, posts);
+    return posts;
+  } catch (error) {
+    console.error("Error fetching user posts:", error);
+    throw error;
+  }
 };
 
 /** 🔹 Fetch a single post */

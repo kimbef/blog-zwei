@@ -1,8 +1,7 @@
 import React, { useState, useContext } from "react";
 import { Paper, Typography, TextField, Button } from "@mui/material";
-import { db } from "../firebase";
-import { ref, push } from "firebase/database";
 import { AuthContext } from "../context/AuthContext";
+import { createPost } from "../realtimeDB";
 import { toast } from 'react-toastify';
 
 const CreatePost: React.FC = () => {
@@ -17,8 +16,7 @@ const CreatePost: React.FC = () => {
     }
 
     try {
-      const postRef = ref(db, "posts");
-      await push(postRef, {
+      await createPost({
         title,
         content,
         authorId: auth.user.uid,

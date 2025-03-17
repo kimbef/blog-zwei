@@ -1,10 +1,9 @@
 import React, { useEffect, useState, useContext } from "react";
-import { Typography, Box, Grid, Card, CardContent, CardActions, IconButton, useTheme, Skeleton } from "@mui/material";
-import { Visibility, Delete, Edit } from "@mui/icons-material";
+import { Typography, Box, Grid, Card, CardContent, CardActions, IconButton, useTheme, CircularProgress, Paper, Divider, Fade } from "@mui/material";
+import { Visibility, Delete, Edit, AccessTime, Article } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import { db } from "../firebase";
-import { ref, get, query, orderByChild, equalTo, remove } from "firebase/database";
+import { fetchUserPosts, deletePost } from "../realtimeDB";
 import { toast } from 'react-toastify';
 
 interface Post {
@@ -31,25 +30,8 @@ const MyPosts: React.FC = () => {
 
       try {
         setLoading(true);
-        const postsRef = ref(db, 'posts');
-        const userPostsQuery = query(
-          postsRef,
-          orderByChild('authorId'),
-          equalTo(auth.user.uid)
-        );
-
-        const snapshot = await get(userPostsQuery);
-        if (snapshot.exists()) {
-          const postsData = snapshot.val();
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const postsArray = Object.entries(postsData).map(([id, post]: [string, any]) => ({
-            id,
-            ...post,
-          }));
-          setPosts(postsArray);
-        } else {
-          setPosts([]);
-        }
+        const userPosts = await fetchUserPosts(auth.user.uid);
+        setPosts(userPosts);
       } catch (error) {
         console.error("Error fetching posts:", error);
         toast.error("Failed to load your posts. Please try again later.");
@@ -65,7 +47,7 @@ const MyPosts: React.FC = () => {
     if (!postId) return;
     
     try {
-      await remove(ref(db, `posts/${postId}`));
+      await deletePost(postId);
       setPosts(posts.filter(post => post.id !== postId));
       toast.success("Post deleted successfully!");
     } catch (error) {
@@ -86,21 +68,13 @@ const MyPosts: React.FC = () => {
 
   if (loading) {
     return (
-      <Box sx={{ maxWidth: "1200px", margin: "auto", padding: { xs: "10px", sm: "20px" } }}>
-        <Grid container spacing={3}>
-          {[...Array(3)].map((_, index) => (
-            <Grid item xs={12} sm={6} md={4} key={index}>
-              <Card sx={{ height: "100%" }}>
-                <Skeleton variant="rectangular" height={140} />
-                <CardContent>
-                  <Skeleton variant="text" width="60%" height={32} />
-                  <Skeleton variant="text" width="100%" height={24} sx={{ mb: 1 }} />
-                  <Skeleton variant="text" width="80%" height={24} />
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '60vh' 
+      }}>
+        <CircularProgress />
       </Box>
     );
   }
@@ -123,82 +97,133 @@ const MyPosts: React.FC = () => {
       </Typography>
 
       {posts.length === 0 ? (
-        <Typography textAlign="center" variant="h6" color="text.secondary">
-          You haven't created any posts yet.
-        </Typography>
+        <Paper 
+          elevation={0}
+          sx={{ 
+            p: 4, 
+            textAlign: "center",
+            background: theme.palette.background.default,
+            borderRadius: 2
+          }}
+        >
+          <Article sx={{ fontSize: 48, color: theme.palette.text.secondary, mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Posts Yet
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            Start sharing your thoughts by creating your first post!
+          </Typography>
+        </Paper>
       ) : (
-        <Grid container spacing={3}>
-          {posts.map((post) => (
-            <Grid item xs={12} sm={6} md={4} key={post.id}>
-              <Card 
-                sx={{ 
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                  "&:hover": {
-                    transform: "translateY(-5px)",
-                    boxShadow: theme.shadows[8]
-                  }
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
+        <Fade in timeout={500}>
+          <Grid container spacing={3}>
+            {posts.map((post) => (
+              <Grid item xs={12} key={post.id}>
+                <Paper 
+                  elevation={0}
+                  sx={{ 
+                    p: 3,
+                    borderRadius: 2,
+                    background: theme.palette.background.paper,
+                    transition: "all 0.3s ease",
+                    border: `1px solid ${theme.palette.divider}`,
+                    position: "relative",
+                    "&:hover": {
+                      transform: "translateY(-4px)",
+                      boxShadow: theme.shadows[4],
+                      borderColor: theme.palette.primary.main
+                    }
+                  }}
+                >
+                  <Box sx={{ 
+                    position: "absolute", 
+                    top: 8, 
+                    right: 8, 
+                    display: "flex", 
+                    gap: 0.5,
+                    zIndex: 1
+                  }}>
+                    <IconButton 
+                      onClick={() => navigate(`/details/${post.id}`)}
+                      size="small"
+                      sx={{ 
+                        width: 24,
+                        height: 24,
+                        backgroundColor: theme.palette.primary.light,
+                        color: theme.palette.primary.contrastText,
+                        "&:hover": { backgroundColor: theme.palette.primary.main }
+                      }}
+                    >
+                      <Visibility sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <IconButton 
+                      onClick={() => navigate(`/edit/${post.id}`)}
+                      size="small"
+                      sx={{ 
+                        width: 24,
+                        height: 24,
+                        backgroundColor: theme.palette.secondary.light,
+                        color: theme.palette.secondary.contrastText,
+                        "&:hover": { backgroundColor: theme.palette.secondary.main }
+                      }}
+                    >
+                      <Edit sx={{ fontSize: 16 }} />
+                    </IconButton>
+                    <IconButton 
+                      onClick={() => handleDelete(post.id!)}
+                      size="small"
+                      sx={{ 
+                        width: 24,
+                        height: 24,
+                        backgroundColor: theme.palette.error.light,
+                        color: theme.palette.error.contrastText,
+                        "&:hover": { backgroundColor: theme.palette.error.main }
+                      }}
+                    >
+                      <Delete sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Box>
+                  
                   <Typography 
-                    variant="h6" 
-                    gutterBottom
+                    variant="h5" 
                     sx={{ 
-                      fontWeight: "bold",
-                      color: theme.palette.primary.main
+                      fontWeight: 600,
+                      color: theme.palette.primary.main,
+                      pr: 8 // Add padding to prevent text from going under the buttons
                     }}
                   >
                     {post.title}
                   </Typography>
+                  
                   <Typography 
-                    variant="body2" 
+                    variant="body1" 
                     color="text.secondary"
                     sx={{ 
                       mb: 2,
-                      display: "-webkit-box",
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: "vertical",
-                      overflow: "hidden"
+                      lineHeight: 1.6
                     }}
                   >
                     {post.content}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Created: {formatDate(post.createdAt)}
-                  </Typography>
-                </CardContent>
-                <CardActions sx={{ p: 2, pt: 0, justifyContent: "space-between" }}>
-                  <Box sx={{ display: "flex", gap: 1 }}>
-                    <IconButton 
-                      onClick={() => navigate(`/details/${post.id}`)}
-                      color="primary"
-                      size="small"
-                    >
-                      <Visibility />
-                    </IconButton>
-                    <IconButton 
-                      onClick={() => navigate(`/edit/${post.id}`)}
-                      color="primary"
-                      size="small"
-                    >
-                      <Edit />
-                    </IconButton>
+                  
+                  <Divider sx={{ my: 2 }} />
+                  
+                  <Box sx={{ 
+                    display: "flex", 
+                    alignItems: "center", 
+                    gap: 1,
+                    color: theme.palette.text.secondary
+                  }}>
+                    <AccessTime fontSize="small" />
+                    <Typography variant="caption">
+                      Created: {formatDate(post.createdAt)}
+                    </Typography>
                   </Box>
-                  <IconButton 
-                    onClick={() => handleDelete(post.id!)}
-                    color="error"
-                    size="small"
-                  >
-                    <Delete />
-                  </IconButton>
-                </CardActions>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+        </Fade>
       )}
     </Box>
   );
